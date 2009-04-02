@@ -1,0 +1,416 @@
+# -*- mode: m4; -*-
+dnl Process this file with autoconf  2.50 (or higher) to produce a configure script.
+AC_PREREQ(2.59)
+AC_INIT(lcdproc, 0.5.2, lcdproc@lists.omnipotent.net)
+AC_CONFIG_SRCDIR([clients/lcdproc/batt.c])
+AM_INIT_AUTOMAKE(1.7)
+
+AC_CONFIG_HEADERS(config.h)
+
+AC_CANONICAL_HOST
+case "$host" in
+*-*-*linux*)      dnl i586-pc-linux-gnu
+	AC_DEFINE([LINUX],[1],[Define if you're using Linux.])
+	ac_system_host=Linux
+	;;
+*-*-*solaris*)
+	AC_DEFINE([SOLARIS],[1],[Define if you're using Solaris.])
+	ac_system_host=Solaris
+	;;
+*-*-*openbsd*)    dnl i386-unknown-openbsd3.0
+	AC_DEFINE([OPENBSD],[1],[Define if you're using OpenBSD.])
+	ac_system_host=OpenBSD
+	;;
+*-*-*netbsd*)
+	AC_DEFINE([NETBSD],[1],[Define if you're using NetBSD.])
+	ac_system_host=NetBSD
+	;;
+*-*-*freebsd*)
+	AC_DEFINE([FREEBSD],[1],[Define if you're using FreeBSD.])
+	ac_system_host=FreeBSD
+	;;
+*-*-*darwin*)
+	AC_DEFINE([DARWIN],[1],[Define if you're using Darwin/Mac OS X.])
+	ac_system_host=Darwin
+	;;
+esac
+AC_DEFINE_UNQUOTED([SYSTEM_HOST], [$ac_system_host], [Set this to your system host (Linux, Solaris, OpenBSD, NetBSD, FreeBSD or Darwin)])
+
+dnl treat Darwin special in Makefiles
+AM_CONDITIONAL(DARWIN, test x$ac_system_host = xDarwin)
+
+AC_MSG_CHECKING(whether to enable debugging)
+AC_ARG_ENABLE(debug,
+  [  --enable-debug          show debug information],
+  if [[[ "$enableval" = "yes" ]]]; then
+        AC_DEFINE(DEBUG,[1],[Define to 1 to show debug information])
+        debug="yes"
+  else
+        debug="no"
+  fi,
+  debug="no"
+)
+AC_MSG_RESULT($debug)
+
+if test $debug = "yes"; then
+dnl Enable debugging information with minimal optimisation if not set differently
+dnl (the spaces before $CFLAGS and -O are significant)
+	CFLAGS="$CFLAGS -g"
+	if ! echo " $CFLAGS" | grep -q -- " -O" ; then
+		CFLAGS="$CFLAGS -O"
+	fi
+else
+dnl Maximum optimisation if not already set
+dnl (the spaces before $CFLAGS and -O are significant)
+	if ! echo " $CFLAGS" | grep -q -- " -O" ; then
+		CFLAGS="$CFLAGS -O3"
+	fi
+fi
+
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+
+dnl Avoid unused static function warnings
+CFLAGS="-Wall $CFLAGS"
+AX_CFLAGS_GCC_OPTION(-Wno-unused-function)
+AX_CFLAGS_GCC_OPTION(-ftrampolines)
+export CFLAGS
+
+dnl Solaris
+AC_CHECK_FUNC(gethostbyname,,[AC_CHECK_LIB(nsl,gethostbyname)])
+AC_CHECK_FUNC(connect,,[AC_CHECK_LIB(socket,connect)])
+AC_CHECK_FUNC(inet_aton,,[AC_CHECK_LIB(resolv,inet_aton)])
+AC_CHECK_LIB(kstat, kstat_open)
+AC_CHECK_LIB(posix4, nanosleep)
+AC_CHECK_FUNCS(getloadavg swapctl)
+AC_CHECK_HEADERS(procfs.h sys/procfs.h sys/loadavg.h utmpx.h)
+
+dnl Some versions of Solaris require -lelf for -lkvm
+AC_CHECK_LIB(kvm, kvm_open,[
+  LIBS="-lkvm $LIBS"
+],[AC_MSG_CHECKING(for kvm_open in -lkvm with -lelf)
+   AC_CACHE_VAL(ac_cv_lib_kvm_with_elf,
+   [ac_save_LIBS="$LIBS"
+    LIBS="-lkvm -lelf $LIBS"
+    AC_LINK_IFELSE([AC_LANG_PROGRAM([[char kvm_open();]], [[kvm_open()]])],[ac_cv_lib_kvm_with_elf=yes],[ac_cv_lib_kvm_with_elf=no])
+    LIBS="$ac_save_LIBS"
+   ])
+   if test "$ac_cv_lib_kvm_with_elf" = "yes"; then
+     AC_MSG_RESULT(yes)
+     LIBS="-lkvm -lelf $LIBS"
+   else
+     AC_MSG_RESULT(no)
+   fi
+])
+
+dnl NetBSD, OpenBSD and FreeBSD
+AC_CHECK_HEADERS(sched.h sys/sched.h machine/cpufunc.h sys/types.h machine/pio.h machine/sysarch.h sys/cpuvar.h)
+ETR_SYSV_IPC
+ETR_UNION_SEMUN
+
+dnl sched_setscheduler on OpenBSD
+AC_CHECK_FUNCS(sched_setscheduler)
+AC_CHECK_LIB(posix4, sched_setscheduler, [
+      AC_DEFINE([HAVE_SCHED_SETSCHEDULER],[1],
+      [Define if you have the sched_setscheduler function.])
+])
+AC_CHECK_LIB(rt, sched_setscheduler, [
+      AC_DEFINE([HAVE_SCHED_SETSCHEDULER],[1],
+      [Define if you have the sched_setscheduler function.])
+])
+
+dnl i386_get_ioperm on NetBSD&OpenBSD
+AC_CHECK_LIB(i386, i386_get_ioperm,
+        LIBS="-li386 $LIBS"
+        AC_DEFINE([HAVE_I386_IOPERM_NETBSD],[1],
+        [Define if you have the NetBSD&OpenBSD version of i386_ioperm functions.]),[
+        dnl i386_get_ioperm on FreeBSD
+        AC_CHECK_LIB(c, i386_get_ioperm,
+                AC_DEFINE([HAVE_I386_IOPERM_FREEBSD],[1],
+                [Define if you have the FreeBSD version of the i386_ioperm functions.]),
+        [])]
+)
+
+AC_CHECK_FUNCS(iopl)
+AC_CHECK_FUNCS(ioperm)
+AC_CHECK_HEADERS(sys/io.h)
+
+dnl Check if we support this parallel (LPT) port
+dnl IMPORTANT: we must do all the checks used in port.h before doing this test!
+AC_CACHE_CHECK([for a parallel port], ac_cv_port_have_lpt,
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include "${srcdir}/server/drivers/port.h"]], [[char val = port_in(0x350)]])],[ac_cv_port_have_lpt=yes],[ac_cv_port_have_lpt=no])])
+
+if test "$ac_cv_port_have_lpt" = yes
+then
+	AC_DEFINE([HAVE_PCSTYLE_LPT_CONTROL],[1],[Define if you have a parallel port and LCDproc knows how to talk to it.])
+else
+	AC_MSG_WARN([Can't talk to the parallel port, disabling drivers that use it.])
+fi
+
+dnl Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h sys/ioctl.h sys/time.h unistd.h sys/io.h errno.h)
+AC_CHECK_HEADERS(limits.h kvm.h sys/param.h sys/dkstat.h)
+
+dnl check sys/sysctl.h seperately, as it requires other headers on at least OpenBSD
+AC_CHECK_HEADERS([sys/sysctl.h], [], [],
+[[#if HAVE_SYS_PARAM_H
+# include <sys/param.h>
+#endif
+]])
+
+dnl Check for particular preprocessor macros
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+AC_STRUCT_TM
+AC_TYPE_UID_T
+
+dnl Checks for library functions.
+AC_PROG_GCC_TRADITIONAL
+AC_TYPE_SIGNAL
+AC_CHECK_FUNCS(select socket strdup strerror strtol uname cfmakeraw snprintf)
+
+dnl Many people on non-GNU/Linux systems don't have getopt
+AC_CONFIG_LIBOBJ_DIR(shared)
+AC_CHECK_FUNC(getopt_long,
+  [
+    AC_ARG_WITH(included-getopt,
+      [  --with-included-getopt  Use the included getopt rather than glibc's],
+      with_getopt=$withval,
+      with_getopt=$no)
+    if test "x$with_getopt" = xyes; then
+      AC_LIBOBJ(getopt)
+      AC_LIBOBJ(getopt1)
+    fi
+  ],
+  [
+    AC_LIBOBJ(getopt)
+    AC_LIBOBJ(getopt1)
+  ])
+
+
+dnl Check how to find the mtab file and how to get filesystem staticstics
+AC_FIND_MTAB_FILE
+AC_GET_FS_INFO
+
+
+dnl Check for various defines and features
+AC_ARG_WITH(lcdport,
+  [  --with-lcdport=<port>   the server port [13666]],
+  LCDPORT=$withval,
+  LCDPORT="13666"
+)
+AC_DEFINE_UNQUOTED(LCDPORT, $LCDPORT, [Set default port where LCDd should listen])
+
+AC_DEFINE_UNQUOTED(PROTOCOL_VERSION, "0.3", [Define version of lcdproc client-server protocol])
+
+AC_DEFINE_UNQUOTED(API_VERSION, "0.5", [Define version of lcdproc API])
+
+
+dnl Check compiler flags to dynamically load modules
+AC_MODULES_INFO
+
+
+dnl ######################################################################
+dnl USB support
+dnl
+dnl not all options have effect at the moment
+
+AC_SUBST(libusb_libs)
+AC_SUBST(libusb_cflags)
+
+AC_MSG_CHECKING([if libusb support has been enabled]);
+AC_ARG_ENABLE(
+  libusb,
+  [  --enable-libusb         compile with USB support using libusb.  ],
+  [ 
+    if test "$enableval" != "no"; then
+      enable_libusb="yes"
+    fi
+  ],
+  [ enable_libusb="yes" ]
+)
+AC_MSG_RESULT($enable_libusb) 
+
+if test "$enable_libusb" = "yes"; then
+  AC_PATH_PROG(libusb_config, libusb-config, :)
+
+  AC_ARG_WITH(
+    libusb-includes,
+    [  --with-libusb-includes=DIR  
+                          libusb include files are in DIR
+                          (default: found by libusb-config).  ],
+    [ 
+      if test "$withval" != "no"; then 
+        libusb_includepath="$withval" 
+        libusb_cflags="-I$withval" 
+      fi
+    ],
+    [ 
+      AC_MSG_CHECKING(libusb CFLAGS)
+      if test "x$libusb_config" != x ; then
+        libusb_cflags=`$libusb_config --cflags`
+      else
+        for libusb_includepath in /usr/include /usr/local/include \
+            /usr/include/libusb /usr/local/include/libusb \
+            /usr/include/usb /usr/local/include/usb ; do \
+          if test -f "${libusb_includepath}/usb.h" ; then
+            libusb_cflags="-I$libusb_includepath"
+            break
+          fi
+        done
+      fi
+      AC_MSG_RESULT($libusb_cflags)
+    ]
+  )
+
+  if test x$libusb_includepath != x ; then
+  AC_CHECK_FILE(
+     $libusb_includepath/usb.h,
+    [ : ] ,
+    [ enable_libusb="no" ]
+  )
+  fi
+fi
+
+if test "$enable_libusb" = "yes"; then
+  AC_ARG_WITH(
+    libusb-libraries,
+    [  --with-libusb-libraries=DIR 
+                          libusb library files are in DIR
+                          (default: found by libusb-config).  ],
+    [ 
+      if test "$withval" != "no"; then 
+        libusb_libs="-L$withval -lusb" 
+      fi
+    ],
+    [ 
+      AC_MSG_CHECKING(libusb library path)
+      if test "x$libusb_config" != x ; then
+        libusb_libs=`$libusb_config --libs`
+      else
+        for libusb_libpath in /lib /usr/lib /usr/local/lib \
+            /lib/libusb /usr/lib/libusb /usr/local/lib/libusb \
+            /lib/usb /usr/lib/usb /usr/local/lib/usb ; do
+          if test -f "${libusb_libpath}/libusb.a" -o -f "${libusb_libpath}/libusb.so"; then
+            libusb_libs="-L$libusb_libpath -lusb"
+            break
+          fi
+        done
+      fi
+      AC_MSG_RESULT($libusb_libs)
+    ]
+  )
+
+  AC_CHECK_LIB(
+    usb,
+    main,
+    [ : ],
+    [ enable_libusb="no" ],
+    $libusb_libs
+  )
+fi
+
+if test "$enable_libusb" = "yes"; then
+  AC_DEFINE(HAVE_LIBUSB,[1],[Define to 1 if you have the libusb library])
+else
+  libusb_libs="";
+  libusb_cflags="";
+fi
+
+
+dnl Select drivers to build
+LCD_DRIVERS_SELECT
+
+
+# Features applicable to the server
+AC_ARG_ENABLE(seamless-hbars,
+	[  --enable-seamless-hbars no gaps in horizontal bar graphs (if HW supports it)],
+	[ if test "$enableval" = "yes" ; then
+		AC_DEFINE(SEAMLESS_HBARS,[1],
+			[Define to 1 to avoid gaps in horizontal bar graphs (if HW supports it)])
+	fi ]
+)
+
+AC_ARG_ENABLE(testmenus,
+	[  --enable-testmenus      enable server test menus],
+	if test "$enableval" = "yes" ; then
+		AC_DEFINE(LCDPROC_TESTMENUS,[1],
+			[Define to 1 to enable server test menus])
+	fi
+)
+
+AC_ARG_ENABLE(permissive_menu_goto,
+	  [  --enable-permissive-menu-goto allow transitions]
+	  [                        between different client's menus],
+	  if test "$enableval" = "yes" ; then
+		AC_DEFINE(LCDPROC_PERMISSIVE_MENU_GOTO,[1],
+			[Define to 1 to allow transitions between different client's menus])
+	  fi
+)
+
+dnl Features applicable to the lcdproc client
+AC_ARG_ENABLE(lcdproc-menus,
+	  [  --enable-lcdproc-menus  enable menu support in lcdproc client],
+	  if test "$enableval" = "yes" ; then
+		AC_DEFINE(LCDPROC_MENUS,[1],
+			[Define to 1 to enable menu support in lcdproc client])
+	  fi
+)
+
+AC_ARG_ENABLE(stat-nfs,
+	  [  --enable-stat-nfs       display NFS filesystem stats in lcdproc client],
+	  if test "$enableval" = "yes" ; then
+		AC_DEFINE(STAT_NFS,[1],
+			[Define to 1 to display NFS filesystem stats in lcdproc client])
+	  fi
+)
+
+AC_ARG_ENABLE(stat-smbfs,
+	  [  --enable-stat-smbfs     display SMBFS filesystem stats in lcdproc client],
+	  if test "$enableval" = "yes" ; then
+		AC_DEFINE(STAT_SMBFS,[1],
+			[Define to 1 to display SMBFS filesystem stats in lcdproc client])
+	  fi
+)
+
+
+# check for doxygen
+BB_ENABLE_DOXYGEN
+
+AC_CONFIG_FILES([Makefile
+	shared/Makefile
+	server/Makefile
+	server/commands/Makefile
+	server/drivers/Makefile
+	clients/Makefile
+	clients/lcdproc/Makefile
+	clients/lcdexec/Makefile
+	clients/lcdvc/Makefile
+	clients/examples/Makefile
+	clients/metar/Makefile
+	docs/Makefile
+	docs/Doxyfile
+	docs/lcdproc-dev/Makefile
+	docs/lcdproc-user/Makefile
+	docs/lcdproc-user/drivers/Makefile
+	scripts/Makefile
+	scripts/init-LCDd.LSB
+	scripts/init-lcdproc.LSB
+	scripts/init-lcdexec.LSB
+	scripts/init-lcdvc.LSB
+	scripts/init-LCDd.debian
+	scripts/init-lcdproc.debian
+	scripts/init-lcdexec.debian
+	scripts/init-lcdvc.debian
+	scripts/init-LCDd.rpm
+	scripts/init-lcdproc.rpm])
+AC_OUTPUT

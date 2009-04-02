@@ -1,0 +1,239 @@
+<sect1 id="CwLnx-howto">
+<title>The CwLnx Driver</title>
+
+<para>
+This section talks about using LCDproc with the serial / USB LCDs CW12232
+and CW1602 by CwLinux.
+</para>
+
+<sect2 id="CwLnx-features">
+<title>Features</title>
+
+<para>
+The CwLinux CW12232 LCDs are graphical LCDs with 122 x 32 dots
+that also have a text mode with 20 x 4 characters,
+the CW1602 LCDs are character LCDs that are 16 characters wide and
+2 lines high.
+</para>
+
+<para>
+The modules can be ordered bare or as part of a kit mounted
+on brackets that fit in half-height 5.25" drive bays.
+The mounting brackets optionally feature a 6 button keypad that
+makes use of the keypad connector on the display modules.
+</para>
+
+<para>
+The kits allow to programmatically switch on/off their backlight.
+Newer revisions of the kits also have programmable brighness as well
+as 4 general purpose IO ports.
+</para>
+
+<para>
+The CW12232 and CW1608 come in 2 variants that differ how they communicate
+with the host: The serial modules are connected to the PC using a serial
+RS232 connection getting operating power using the standard floppy drive
+power connector, while the USB modules only require an USB connection.
+</para>
+
+<para>
+For more information see the 
+<ulink url="http://www.cwlinux.com">CwLinux web site</ulink>
+</para>
+
+</sect2>
+
+
+<!-- ## Cwlinux driver ## -->
+<sect2 id="CwLnx-config">
+<title>Configuration in LCDd.conf</title>
+
+<sect3 id="CwLnx-config-section">
+<title>[CwLnx]</title>
+
+<variablelist>
+<varlistentry>
+  <term>
+    <command>Model=</command>
+    <arg choice="plain">
+    <group choice="req">
+      <arg choice="plain"><literal><emphasis>12232</emphasis></literal></arg>
+      <arg choice="plain"><literal>1602</literal></arg>
+    </group>
+    </arg>
+  </term>
+  <listitem><para>
+    Select the LCD model [default: <literal>12232</literal>; legal: <literal>12232</literal>, <literal>1602</literal>]
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Device=</command>
+    <arg choice="plain"><replaceable>DEVICE</replaceable></arg>
+  </term>
+  <listitem><para>
+    Select the output device to use [default: <filename>/dev/lcd</filename>]
+    May be serial device or USB device in serial emulation mode.
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Size=</command>
+    <arg choice="plain">
+      <replaceable>WIDTH</replaceable>
+      <literal>x</literal>
+      <replaceable>HEIGHT</replaceable>
+    </arg>
+  </term>
+  <listitem><para>
+    Select the LCD size [default: depending on model: 12232: <literal>20x4</literal>,
+                                                       1602: <literal>16x2</literal>]
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Speed=</command>
+    <arg choice="plain">
+    <group choice="req">
+      <arg choice="plain"><literal>9600</literal></arg>
+      <arg choice="plain"><literal><emphasis>19200</emphasis></literal></arg>
+    </group>
+    </arg>
+  </term>
+  <listitem><para>
+    Set the the baud rate for communication with the LCD.
+    If not given, the default is <literal>19200</literal>.
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Reboot=</command>
+    <arg choice="plain">
+    <group choice="req">
+      <arg choice="plain"><literal>yes</literal></arg>
+      <arg choice="plain"><literal><emphasis>no</emphasis></literal></arg>
+    </group>
+    </arg>
+  </term>
+  <listitem><para>
+    Reinitialize the LCD's BIOS [default: <literal>no</literal>; legal: <literal>yes</literal>, <literal>no</literal>]
+    normally you shouldn't need this
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Keypad=</command>
+    <arg choice="plain">
+    <group choice="req">
+      <arg choice="plain"><literal>yes</literal></arg>
+      <arg choice="plain"><literal><emphasis>no</emphasis></literal></arg>
+    </group>
+    </arg>
+  </term>
+  <listitem><para>
+    Tells if you have a keypad connected. Keypad layout is currently not
+    configureable from the config file.
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>KeyMap_A=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <term>
+    <command>KeyMap_B=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <term>
+    <command>KeyMap_C=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <term>
+    <command>KeyMap_D=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <term>
+    <command>KeyMap_E=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <term>
+    <command>KeyMap_F=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <listitem><para>
+    If you have a non standard keypad you can associate any keystrings to keys.
+    There are 6 input key in the CwLnx hardware that generate characters
+    from '<literal>A</literal>' to '<literal>F</literal>'.
+    Legal values for <replaceable>KEY</replaceable> are <literal>Up</literal>,
+    <literal>Down</literal>, <literal>Left</literal>, <literal>Right</literal>,
+    <literal>Enter</literal> and <literal>Escape</literal>.
+    </para>
+    <para>
+    The following it the built-in default mapping hardcoded in the driver.
+    </para>
+    <informaltable>
+    <tgroup cols="2">
+      <tbody>
+        <row>
+	  <entry>KeyMap_A</entry>
+	  <entry><literal>Up</literal></entry>
+	</row>
+        <row>
+	  <entry>KeyMap_B</entry>
+	  <entry><literal>Down</literal></entry>
+	</row>
+        <row>
+	  <entry>KeyMap_C</entry>
+	  <entry><literal>Left</literal></entry>
+	</row>
+        <row>
+	  <entry>KeyMap_D</entry>
+	  <entry><literal>Right</literal></entry>
+	</row>
+        <row>
+	  <entry>KeyMap_E</entry>
+	  <entry><literal>Enter</literal></entry>
+	</row>
+        <row>
+	  <entry>KeyMap_F</entry>
+	  <entry><literal>Escape</literal></entry>
+	</row>
+      </tbody>
+    </tgroup>
+    </informaltable>
+    <para>
+    You may leave it unchanged if you have a standard keypad.
+    You can change it if you want to report other keystrings or have a non
+    standard keypad.
+    </para>
+  </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>keypad_test_mode=</command>
+    <arg choice="plain">
+    <group choice="req">
+      <arg choice="plain"><literal>yes</literal></arg>
+      <arg choice="plain"><literal><emphasis>no</emphasis></literal></arg>
+    </group>
+    </arg>
+  </term>
+  <listitem><para>
+    keypad_test_mode permit to test keypad assignment
+    Default value is no
+  </para></listitem>
+</varlistentry>
+</variablelist>
+
+</sect3>
+
+</sect2>
+
+</sect1>

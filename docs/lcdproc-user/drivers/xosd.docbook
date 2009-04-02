@@ -1,0 +1,61 @@
+<sect1 id="xosd-howto">
+<title>The xosd Driver</title>
+
+
+<para>
+This section talks about using LCDproc with libxosd.
+</para>
+
+<para>
+<ulink url="http://sourceforge.net/projects/libxosd">libxosd</ulink> is a system
+that displays text on top of your X-Windows screen, much like the
+on-screen display (OSD) used by most modern televisions and video-players.
+</para>
+
+<!-- ## OnScreen Display using libxosd ## -->
+<sect2 id="xosd-config">
+<title>Configuration in LCDd.conf</title>
+
+<sect3 id="xosd-config-section">
+<title>[xosd]</title>
+
+<variablelist>
+<varlistentry>
+  <term>
+    <command>Size=</command>
+    <arg choice="plain">
+      <replaceable>WIDTH</replaceable>
+      <literal>x</literal>
+      <replaceable>HEIGHT</replaceable>
+    </arg>
+  </term>
+  <listitem><para>
+    set display size [default: <literal>20x4</literal>]
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Font=</command>
+    <arg choice="plain"><replaceable>FONT</replaceable></arg>
+  </term>
+  <listitem>
+    <para>
+      X font to use, in XLFD (X Logical Font Description) format,
+      as given by the <command>xfontsel</command> command.
+      E.g. <literal>-*-terminus-*-r-*-*-*-320-*-*-*-*-*</literal>.
+    </para>
+    <para>
+      For best results it is recommended to use a mono-spaced font
+      to mimic the aspect of a physical LCD display that most 
+      clients expect with regard to their screen layouts.
+    </para>
+  </listitem>
+</varlistentry>
+</variablelist>
+
+</sect3>
+
+</sect2>
+
+</sect1>

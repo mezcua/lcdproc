@@ -1,0 +1,86 @@
+<sect1 id="joy-howto">
+<title>The Joystick Input Driver</title>
+
+<para>
+This section covers the joystick input driver for LCDd.
+</para>
+
+<!-- ## Joystick driver ## -->
+<sect2 id="joy-config">
+<title>Configuration in LCDd.conf</title>
+
+<sect3 id="joy-config-section">
+<title>[joy]</title>
+
+<variablelist>
+<varlistentry>
+  <term>
+    <command>Device=</command>
+    <arg choice="plain"><replaceable>DEVICE</replaceable></arg>
+  </term>
+  <listitem><para>
+    Select the input device to use [default: <filename>/dev/js0</filename>]
+  </para></listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Map_Axis<replaceable>NUM</replaceable>neg=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <term>
+    <command>Map_Axis<replaceable>NUM</replaceable>pos=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <listitem>
+    <para>
+    Set the axis map.
+    </para>
+
+    <para>
+    <replaceable>NUM</replaceable> is an integer starting with <literal>1</literal>
+    that represents each axis with the affixes <literal>neg</literal> and
+    <literal>pos</literal> determining the direction.
+    The exact numbering of the axes depends on the hardware used.
+    </para>
+
+    <para>
+    <replaceable>KEY</replaceable> can be one of the keys that LCDd recognizes
+    (<literal>Left</literal>, <literal>Right</literal>, <literal>Up</literal>, 
+    <literal>Down</literal>, <literal>Enter</literal> or <literal>Escape</literal>)
+    or any other string that a client can parse.
+    </para>
+  </listitem>
+</varlistentry>
+
+<varlistentry>
+  <term>
+    <command>Map_Button<replaceable>NUM</replaceable>=</command>
+    <arg choice="plain"><replaceable>KEY</replaceable></arg>
+  </term>
+  <listitem>
+    <para>
+    Set the button map.
+    </para>
+
+    <para>
+    <replaceable>NUM</replaceable> is an integer starting with <literal>1</literal>
+    that represents each button. The exact numbering of the buttons depends on the
+    hardware used.
+    </para>
+
+    <para>
+    <replaceable>KEY</replaceable> can be one of the keys that LCDd recognizes
+    (<literal>Left</literal>, <literal>Right</literal>, <literal>Up</literal>, 
+    <literal>Down</literal>, <literal>Enter</literal> or <literal>Escape</literal>)
+    or any other string that a client can parse.
+    </para>
+  </listitem>
+</varlistentry>
+</variablelist>
+
+</sect3>
+
+</sect2>
+
+</sect1>
